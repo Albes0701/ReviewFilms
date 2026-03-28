@@ -2,9 +2,7 @@ using EFCore.NamingConventions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 using ReviewFilms.Api.Data;
-using ReviewFilms.Api.Enums;
 
 namespace ReviewFilms.Api.Extensions;
 
@@ -20,18 +18,7 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<ApplicationDbContext>(options =>
         {
             options
-                .UseNpgsql(connectionString, npgsqlOptions =>
-                {
-                    npgsqlOptions.MapEnum<UserStatus>("user_status");
-                    npgsqlOptions.MapEnum<MovieStatus>("movie_status");
-                    npgsqlOptions.MapEnum<CreditType>("credit_type");
-                    npgsqlOptions.MapEnum<CommentStatus>("comment_status");
-                    npgsqlOptions.MapEnum<WatchlistStatus>("watchlist_status");
-                    npgsqlOptions.MapEnum<ReportTargetType>("report_target_type");
-                    npgsqlOptions.MapEnum<ReportStatus>("report_status");
-                    npgsqlOptions.MapEnum<NotificationType>("notification_type");
-                    npgsqlOptions.MapEnum<VoteType>("vote_type");
-                })
+                .UseMySQL(connectionString)
                 .UseSnakeCaseNamingConvention();
         });
 

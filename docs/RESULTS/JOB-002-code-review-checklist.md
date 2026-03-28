@@ -1,6 +1,6 @@
 # JOB-002 Code Review Checklist
 
-> Mục tiêu: đọc nhanh theo thứ tự ưu tiên để kiểm tra schema mapping EF Core PostgreSQL đã khớp với `DanhGiaPhim.sql`.
+> Mục tiêu: đọc nhanh theo thứ tự ưu tiên để kiểm tra schema mapping EF Core MySQL đã khớp với `DanhGiaPhim.sql` và cấu hình hiện tại của codebase.
 
 ## Ưu tiên 1
 
@@ -35,8 +35,8 @@
 
 ## Checklist khi review
 
-- Xác nhận 9 enum C# map đúng label PostgreSQL bằng `[PgName(...)]`
-- Xác nhận `HasPostgresEnum()` và `MapEnum()` đều đã có cho các enum cần thiết
+- Xác nhận 9 enum C# được lưu dạng string qua `HasConversion<string>()`
+- Xác nhận `UseMySQL(...)` đã được cấu hình đúng
 - Xác nhận tất cả `uuid` trong SQL đã chuyển sang `Guid`
 - Xác nhận các bảng join dùng composite key:
   - `role_permission`
@@ -54,6 +54,7 @@
   - `created_by`
   - `assigned_by`
   - `reviewed_by`
+- Xác nhận `jsonb` đã đổi sang `json`
+- Xác nhận `DateTime` dùng `datetime(6)`
 - Xác nhận `Program.cs` chỉ làm wiring, không chứa business logic
 - Xác nhận build vẫn sạch trước khi tạo migration
-

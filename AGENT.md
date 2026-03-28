@@ -4,7 +4,7 @@
 - **Name:** ReviewFilms API
 - **Framework:** ASP.NET Core 10.0 LTS (Web API)
 - **Language:** C# 14 (or latest supported)
-- **Database:** PostgreSQL
+- **Database:** MySQL
 - **ORM:** Entity Framework Core (EF Core) - Code First
 - **Architecture:** Layered Architecture (Monolithic Single Project)
 - **Background:** The lead developer is transitioning from Spring Boot (Java). We aim for a structure that is familiar but strictly follows enterprise .NET best practices.
@@ -23,7 +23,7 @@ AI must strictly follow this folder organization for a real-world Enterprise ASP
 - `/Security`: Handles everything related to system security (JWT generation, Password Hashing, Claims Transformation, Custom Authorization Policies/Handlers).
 - `/Extensions`: `IServiceCollection` extension methods (e.g., `AddJwtAuth()`, `AddSwagger()`, `AddApplicationServices()`) to keep `Program.cs` clean and readable.
 - `/Configurations`: Strongly-Typed classes used to map data from `appsettings.json` (e.g., `JwtSettings`, `CloudinarySettings`) via the `IOptions<T>` pattern.
-- `/Enums`: Contains system constants and C# Enums mapping directly to PostgreSQL ENUM types (e.g., `UserStatus`, `MovieStatus`, `RoleCode`).
+- `/Enums`: Contains system constants and C# Enums mapped to database-backed status/lookup columns (e.g., `UserStatus`, `MovieStatus`, `RoleCode`).
 
 ## 3. Coding Conventions (Strict)
 - **Naming:** - Use `PascalCase` for folders, classes, methods, and public properties.

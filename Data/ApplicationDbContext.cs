@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ReviewFilms.Api.Entities;
@@ -50,8 +51,6 @@ public class ApplicationDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        ConfigurePostgresEnums(modelBuilder);
-
         ConfigureUser(modelBuilder.Entity<User>());
         ConfigureRole(modelBuilder.Entity<Role>());
         ConfigurePermission(modelBuilder.Entity<Permission>());
@@ -70,20 +69,34 @@ public class ApplicationDbContext : DbContext
         ConfigureReport(modelBuilder.Entity<Report>());
         ConfigureNotification(modelBuilder.Entity<Notification>());
 
+        ConfigureEnumProperties(modelBuilder);
         ApplyTemporalColumnTypes(modelBuilder);
     }
 
-    private static void ConfigurePostgresEnums(ModelBuilder modelBuilder)
+    private static void ConfigureEnumProperties(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasPostgresEnum<UserStatus>();
-        modelBuilder.HasPostgresEnum<MovieStatus>();
-        modelBuilder.HasPostgresEnum<CreditType>();
-        modelBuilder.HasPostgresEnum<CommentStatus>();
-        modelBuilder.HasPostgresEnum<WatchlistStatus>();
-        modelBuilder.HasPostgresEnum<ReportTargetType>();
-        modelBuilder.HasPostgresEnum<ReportStatus>();
-        modelBuilder.HasPostgresEnum<NotificationType>();
-        modelBuilder.HasPostgresEnum<VoteType>();
+        ConfigureEnumProperty(modelBuilder.Entity<User>(), x => x.Status);
+        ConfigureEnumProperty(modelBuilder.Entity<Movie>(), x => x.Status);
+        ConfigureEnumProperty(modelBuilder.Entity<MovieCredit>(), x => x.CreditType);
+        ConfigureEnumProperty(modelBuilder.Entity<Comment>(), x => x.Status);
+        ConfigureEnumProperty(modelBuilder.Entity<Watchlist>(), x => x.Status);
+        ConfigureEnumProperty(modelBuilder.Entity<Report>(), x => x.TargetType);
+        ConfigureEnumProperty(modelBuilder.Entity<Report>(), x => x.Status);
+        ConfigureEnumProperty(modelBuilder.Entity<Notification>(), x => x.Type);
+        ConfigureEnumProperty(modelBuilder.Entity<CommentVote>(), x => x.VoteType);
+    }
+
+    private static PropertyBuilder<TEnum> ConfigureEnumProperty<TEntity, TEnum>(
+        EntityTypeBuilder<TEntity> entity,
+        Expression<Func<TEntity, TEnum>> propertyExpression,
+        int maxLength = 50)
+        where TEntity : class
+        where TEnum : struct, Enum
+    {
+        return entity.Property(propertyExpression)
+            .HasConversion<string>()
+            .HasMaxLength(maxLength)
+            .IsRequired();
     }
 
     private static void ConfigureUser(EntityTypeBuilder<User> entity)
@@ -573,7 +586,7 @@ public class ApplicationDbContext : DbContext
 
         entity.Property(x => x.Title).HasMaxLength(255).IsRequired();
         entity.Property(x => x.Message).IsRequired();
-        entity.Property(x => x.DataJson).HasColumnType("jsonb");
+        entity.Property(x => x.DataJson).HasColumnType("json");
 
         entity.HasIndex(x => x.UserId);
         entity.HasIndex(x => new { x.UserId, x.IsRead, x.CreatedAt });
@@ -594,7 +607,7 @@ public class ApplicationDbContext : DbContext
 
                 if (clrType == typeof(DateTime))
                 {
-                    property.SetColumnType("timestamp without time zone");
+                    property.SetColumnType("datetime(6)");
                 }
                 else if (clrType == typeof(DateOnly))
                 {

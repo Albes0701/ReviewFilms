@@ -12,6 +12,7 @@ out/
 # Visual Studio / VS Code
 .vs/
 .vscode/
+.worktree/
 
 # Rider / JetBrains
 .idea/

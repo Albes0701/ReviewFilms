@@ -23,6 +23,7 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddAuthModule(configuration);
+        services.AddNotificationModule();
 
         return services;
     }
@@ -51,6 +52,8 @@ public static class ServiceCollectionExtensions
                     });
                 };
             });
+
+        services.AddReviewModule();
 
         return services;
     }

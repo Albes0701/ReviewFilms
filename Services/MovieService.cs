@@ -12,15 +12,18 @@ public sealed class MovieService : IMovieService
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly ICurrentUserService _currentUserService;
     private readonly ILogger<MovieService> _logger;
 
     public MovieService(
         ApplicationDbContext dbContext,
         ICloudinaryService cloudinaryService,
+        ICurrentUserService currentUserService,
         ILogger<MovieService> logger)
     {
         _dbContext = dbContext;
         _cloudinaryService = cloudinaryService;
+        _currentUserService = currentUserService;
         _logger = logger;
     }
 
@@ -117,6 +120,7 @@ public sealed class MovieService : IMovieService
         CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
+        var currentUserId = _currentUserService.GetCurrentUserId();
         var title = request.Title.Trim();
         var resolvedSlug = await GenerateUniqueSlugAsync(
             string.IsNullOrWhiteSpace(request.Slug) ? title : request.Slug.Trim(),
@@ -151,7 +155,7 @@ public sealed class MovieService : IMovieService
             Status = request.Status,
             CreatedAt = now,
             UpdatedAt = now,
-            CreatedByUserId = null,
+            CreatedByUserId = currentUserId,
             MovieGenres = genres.Select(genre => new MovieGenre
             {
                 MovieId = Guid.Empty,

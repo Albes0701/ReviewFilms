@@ -4,16 +4,21 @@ using ReviewFilms.Api.DTOs.Reviews;
 using ReviewFilms.Api.Entities;
 using ReviewFilms.Api.Enums;
 using ReviewFilms.Api.Interfaces;
+using System.Text.Json;
 
 namespace ReviewFilms.Api.Services;
 
 public sealed class ReviewService : IReviewService
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly INotificationService _notificationService;
 
-    public ReviewService(ApplicationDbContext dbContext)
+    public ReviewService(
+        ApplicationDbContext dbContext,
+        INotificationService notificationService)
     {
         _dbContext = dbContext;
+        _notificationService = notificationService;
     }
 
     public async Task UpsertRatingAsync(Guid movieId, int score, Guid userId, CancellationToken cancellationToken = default)
@@ -152,6 +157,11 @@ public sealed class ReviewService : IReviewService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        if (request.ParentId.HasValue)
+        {
+            await CreateReplyNotificationAsync(comment, userId, cancellationToken);
+        }
+
         return MapCommentResponse(comment);
     }
 
@@ -252,6 +262,44 @@ public sealed class ReviewService : IReviewService
             UpdatedAt = comment.UpdatedAt,
             ChildComments = new List<CommentResponse>()
         };
+    }
+
+    private async Task CreateReplyNotificationAsync(
+        Comment replyComment,
+        Guid replyAuthorId,
+        CancellationToken cancellationToken)
+    {
+        if (!replyComment.ParentId.HasValue)
+        {
+            return;
+        }
+
+        var parentAuthorId = await _dbContext.Comments
+            .AsNoTracking()
+            .Where(comment => comment.Id == replyComment.ParentId.Value)
+            .Select(comment => comment.UserId)
+            .SingleAsync(cancellationToken);
+
+        if (parentAuthorId == replyAuthorId)
+        {
+            return;
+        }
+
+        using var payloadDocument = JsonDocument.Parse(
+            $$"""
+            {
+              "movieId": "{{replyComment.MovieId}}",
+              "commentId": "{{replyComment.Id}}"
+            }
+            """);
+
+        await _notificationService.CreateNotificationAsync(
+            parentAuthorId,
+            NotificationType.CommentReply,
+            "Có người vừa trả lời bình luận của bạn",
+            "Một người dùng vừa phản hồi bình luận của bạn.",
+            payloadDocument.RootElement.Clone(),
+            cancellationToken: cancellationToken);
     }
 
     private static IReadOnlyList<CommentResponse> BuildCommentTree(IReadOnlyList<CommentResponse> flatComments)

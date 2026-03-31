@@ -7,8 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="CloudinaryDotNet" Version="1.28.0" />
     <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
@@ -25,7 +27,9 @@
 
   <ItemGroup>
     <Compile Remove="Tests\**\*.cs" />
+    <Compile Remove="ReviewFilms.Tests\**\*.cs" />
     <None Remove="Tests\**\*" />
+    <None Remove="ReviewFilms.Tests\**\*" />
   </ItemGroup>
 
 </Project>

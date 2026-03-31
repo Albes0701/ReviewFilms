@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using ReviewFilms.Api.Data;
+using ReviewFilms.Api.Interfaces;
+using ReviewFilms.Api.Services;
 
 namespace ReviewFilms.Api.Extensions;
 
@@ -22,8 +24,11 @@ public static class ServiceCollectionExtensions
             .UseSnakeCaseNamingConvention();
         });
 
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddFilmModule(configuration);
         services.AddAuthModule(configuration);
+        services.AddReviewModule();
         services.AddNotificationModule();
 
         return services;
@@ -53,8 +58,6 @@ public static class ServiceCollectionExtensions
                     });
                 };
             });
-
-        services.AddReviewModule();
 
         return services;
     }

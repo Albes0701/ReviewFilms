@@ -1,4 +1,4 @@
-namespace ReviewFilms.Api.Interfaces;
+﻿namespace ReviewFilms.Api.Interfaces;
 
 public interface ICurrentUserService
 {

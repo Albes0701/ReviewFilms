@@ -52,6 +52,8 @@ public static class ServiceCollectionExtensions
                 };
             });
 
+        services.AddReviewModule();
+
         return services;
     }
 

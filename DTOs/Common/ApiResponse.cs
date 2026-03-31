@@ -26,4 +26,13 @@ public class ApiResponse<T>
             Message = message
         };
     }
+
+    public static ApiResponse<T> Fail(string message)
+    {
+        return new ApiResponse<T>
+        {
+            Success = false,
+            Message = message
+        };
+    }
 }

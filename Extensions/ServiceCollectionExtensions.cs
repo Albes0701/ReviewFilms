@@ -18,11 +18,13 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<ApplicationDbContext>(options =>
         {
             options
-                .UseMySQL(connectionString)
-                .UseSnakeCaseNamingConvention();
+            .UseMySQL(connectionString)
+            .UseSnakeCaseNamingConvention();
         });
 
         services.AddFilmModule(configuration);
+        services.AddAuthModule(configuration);
+        services.AddNotificationModule();
 
         return services;
     }
@@ -51,6 +53,8 @@ public static class ServiceCollectionExtensions
                     });
                 };
             });
+
+        services.AddReviewModule();
 
         return services;
     }

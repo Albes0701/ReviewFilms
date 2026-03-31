@@ -22,6 +22,8 @@ public static class ServiceCollectionExtensions
                 .UseSnakeCaseNamingConvention();
         });
 
+        services.AddFilmModule(configuration);
+
         return services;
     }
 

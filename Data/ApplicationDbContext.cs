@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ReviewFilms.Api.Entities;
 using ReviewFilms.Api.Enums;
 
@@ -308,6 +309,9 @@ public class ApplicationDbContext : DbContext
         entity.Property(x => x.OriginalTitle).HasMaxLength(255);
         entity.Property(x => x.Slug).HasMaxLength(255).IsRequired();
         entity.Property(x => x.Overview);
+        entity.Property(x => x.ReleaseDate)
+            .HasConversion(DateOnlyNullableConverter)
+            .HasColumnType("date");
         entity.Property(x => x.AgeRating).HasMaxLength(20);
         entity.Property(x => x.OriginalLanguage).HasMaxLength(10);
         entity.Property(x => x.PosterUrl).HasMaxLength(500);
@@ -383,6 +387,12 @@ public class ApplicationDbContext : DbContext
         entity.Property(x => x.OriginalName).HasMaxLength(255);
         entity.Property(x => x.KnownForDepartment).HasMaxLength(100);
         entity.Property(x => x.Gender).HasMaxLength(20);
+        entity.Property(x => x.Birthday)
+            .HasConversion(DateOnlyNullableConverter)
+            .HasColumnType("date");
+        entity.Property(x => x.Deathday)
+            .HasConversion(DateOnlyNullableConverter)
+            .HasColumnType("date");
         entity.Property(x => x.PlaceOfBirth).HasMaxLength(255);
         entity.Property(x => x.ProfileUrl).HasMaxLength(500);
         entity.Property(x => x.Biography);
@@ -609,11 +619,16 @@ public class ApplicationDbContext : DbContext
                 {
                     property.SetColumnType("datetime(6)");
                 }
-                else if (clrType == typeof(DateOnly))
-                {
-                    property.SetColumnType("date");
-                }
             }
         }
     }
+
+    private static readonly ValueConverter<DateOnly?, DateTime?> DateOnlyNullableConverter =
+        new(
+            dateOnly => dateOnly.HasValue
+                ? dateOnly.Value.ToDateTime(TimeOnly.MinValue)
+                : null,
+            dateTime => dateTime.HasValue
+                ? DateOnly.FromDateTime(dateTime.Value)
+                : null);
 }

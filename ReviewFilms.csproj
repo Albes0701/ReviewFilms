@@ -22,4 +22,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="ReviewFilms.Tests\**\*.cs" />
+  </ItemGroup>
+
 </Project>

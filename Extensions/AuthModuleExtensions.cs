@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
@@ -20,6 +21,8 @@ public static class AuthModuleExtensions
         services.AddJwtAuth(configuration);
         services.AddSingleton<JwtTokenGenerator>();
         services.AddSingleton<PasswordHasher>();
+        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionAuthorizationPolicyProvider>();
         services.AddScoped<IAuthService, AuthService>();
 
         return services;

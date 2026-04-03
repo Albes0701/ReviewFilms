@@ -22,6 +22,7 @@ public sealed class JwtTokenGenerator
     public string GenerateAccessToken(
         User user,
         IEnumerable<string> roles,
+        IEnumerable<string> permissions,
         string jwtId,
         DateTime expiresAt)
     {
@@ -47,6 +48,12 @@ public sealed class JwtTokenGenerator
                 .Where(role => !string.IsNullOrWhiteSpace(role))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Select(role => new Claim(ClaimTypes.Role, role)));
+
+        claims.AddRange(
+            permissions
+                .Where(permission => !string.IsNullOrWhiteSpace(permission))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(permission => new Claim(PermissionClaimTypes.Permission, permission)));
 
         var token = new JwtSecurityToken(
             issuer: _options.Issuer,

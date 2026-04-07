@@ -1,0 +1,549 @@
+{
+  "info": {
+    "_postman_id": "7f9ed4f5-67b6-4d68-9078-3d83f0b90409",
+    "name": "ReviewFilms API",
+    "description": "Postman collection for ReviewFilms API endpoints. Set `baseUrl` to your running API host before testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "movieId", "value": "00000000-0000-0000-0000-000000000001" },
+    { "key": "genreId", "value": "00000000-0000-0000-0000-000000000002" },
+    { "key": "commentId", "value": "00000000-0000-0000-0000-000000000003" },
+    { "key": "notificationId", "value": "00000000-0000-0000-0000-000000000004" },
+    { "key": "tmdbId", "value": "603" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const syncVariable = (key, value) => {",
+                  "  const normalizedValue = value || '';",
+                  "  pm.collectionVariables.set(key, normalizedValue);",
+                  "  if (pm.environment && pm.environment.name) {",
+                  "    pm.environment.set(key, normalizedValue);",
+                  "  }",
+                  "};",
+                  "if (json && json.data) {",
+                  "  syncVariable('accessToken', json.data.token);",
+                  "  syncVariable('refreshToken', json.data.refreshToken);",
+                  "  syncVariable('userId', json.data.userId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"demo_user\",\n  \"email\": \"demo@example.com\",\n  \"password\": \"Password123!\",\n  \"displayName\": \"Demo User\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const syncVariable = (key, value) => {",
+                  "  const normalizedValue = value || '';",
+                  "  pm.collectionVariables.set(key, normalizedValue);",
+                  "  if (pm.environment && pm.environment.name) {",
+                  "    pm.environment.set(key, normalizedValue);",
+                  "  }",
+                  "};",
+                  "if (json && json.data) {",
+                  "  syncVariable('accessToken', json.data.token);",
+                  "  syncVariable('refreshToken', json.data.refreshToken);",
+                  "  syncVariable('userId', json.data.userId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"demo@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const syncVariable = (key, value) => {",
+                  "  const normalizedValue = value || '';",
+                  "  pm.collectionVariables.set(key, normalizedValue);",
+                  "  if (pm.environment && pm.environment.name) {",
+                  "    pm.environment.set(key, normalizedValue);",
+                  "  }",
+                  "};",
+                  "if (json && json.data) {",
+                  "  syncVariable('accessToken', json.data.token);",
+                  "  syncVariable('refreshToken', json.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessToken\": \"{{accessToken}}\",\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update Me",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "displayName", "value": "Updated Demo User", "type": "text" },
+                { "key": "bio", "value": "I review films and test APIs.", "type": "text" },
+                { "key": "avatarFile", "type": "file", "src": "" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Movies",
+      "item": [
+        {
+          "name": "Get Movies",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies?pageNumber=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "genreId", "value": "{{genreId}}", "disabled": true },
+                { "key": "status", "value": "Published", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Movie By Id",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/{{movieId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "{{movieId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Movie",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "Interstellar", "type": "text" },
+                { "key": "originalTitle", "value": "Interstellar", "type": "text" },
+                { "key": "slug", "value": "interstellar", "type": "text" },
+                { "key": "overview", "value": "A team travels through a wormhole in space.", "type": "text" },
+                { "key": "releaseDate", "value": "2014-11-07", "type": "text" },
+                { "key": "runtimeMinutes", "value": "169", "type": "text" },
+                { "key": "ageRating", "value": "PG-13", "type": "text" },
+                { "key": "originalLanguage", "value": "en", "type": "text" },
+                { "key": "trailerUrl", "value": "https://www.youtube.com/watch?v=zSWdZVtXT7E", "type": "text" },
+                { "key": "status", "value": "Published", "type": "text" },
+                { "key": "genreIds[0]", "value": "{{genreId}}", "type": "text" },
+                { "key": "posterFile", "type": "file", "src": "" },
+                { "key": "backdropFile", "type": "file", "src": "" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/movies",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies"]
+            }
+          }
+        },
+        {
+          "name": "Update Movie",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "Interstellar Remastered", "type": "text" },
+                { "key": "overview", "value": "Updated overview for testing.", "type": "text" },
+                { "key": "status", "value": "Published", "type": "text" },
+                { "key": "genreIds[0]", "value": "{{genreId}}", "type": "text" },
+                { "key": "posterFile", "type": "file", "src": "" },
+                { "key": "backdropFile", "type": "file", "src": "" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/{{movieId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "{{movieId}}"]
+            }
+          }
+        },
+        {
+          "name": "Sync Genres From TMDB",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/sync-genres",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "sync-genres"]
+            }
+          }
+        },
+        {
+          "name": "Import Single Movie From TMDB",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/import/single/{{tmdbId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "import", "single", "{{tmdbId}}"]
+            }
+          }
+        },
+        {
+          "name": "Import Bulk Popular Movies",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"count\": 20\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/import/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "movies", "import", "bulk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lookups",
+      "item": [
+        {
+          "name": "Get Genres",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/genres",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "genres"]
+            }
+          }
+        },
+        {
+          "name": "Get Persons",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/persons",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "persons"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Upsert Rating",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"score\": 9\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/ratings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reviews", "ratings"]
+            }
+          }
+        },
+        {
+          "name": "Delete Rating",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/ratings/{{movieId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reviews", "ratings", "{{movieId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Comment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"movieId\": \"{{movieId}}\",\n  \"content\": \"This movie was excellent.\",\n  \"parentId\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reviews", "comments"]
+            }
+          }
+        },
+        {
+          "name": "Get Comments By Movie",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/movies/{{movieId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reviews", "movies", "{{movieId}}", "comments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get My Notifications",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification As Read",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "{{notificationId}}", "read"]
+            }
+          }
+        },
+        {
+          "name": "Create Notification",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"System\",\n  \"title\": \"Maintenance notice\",\n  \"message\": \"The system will be updated tonight.\",\n  \"data\": {\n    \"source\": \"postman\"\n  },\n  \"expiresAt\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "WeatherForecast",
+      "item": [
+        {
+          "name": "Get Weather Forecast",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/weatherforecast",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "weatherforecast"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

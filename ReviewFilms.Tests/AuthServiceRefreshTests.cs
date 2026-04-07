@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ReviewFilms.Api.Configurations;
@@ -33,6 +34,23 @@ public sealed class AuthServiceRefreshTests
         Assert.False(string.IsNullOrWhiteSpace(response.RefreshToken));
         Assert.NotEqual(TestData.RawRefreshToken, response.RefreshToken);
 
+        var permissionsProperty = typeof(AuthResponse).GetProperty("Permissions");
+
+        Assert.NotNull(permissionsProperty);
+
+        var permissions = Assert.IsType<string[]>(permissionsProperty!.GetValue(response));
+        Assert.Equal(["genres:sync", "movies:import"], permissions.OrderBy(permission => permission).ToArray());
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(response.Token);
+        Assert.Contains(jwt.Claims, claim => claim.Type == System.Security.Claims.ClaimTypes.Role && claim.Value == "USER");
+        Assert.Equal(
+            ["genres:sync", "movies:import"],
+            jwt.Claims
+                .Where(claim => claim.Type == "permissions")
+                .Select(claim => claim.Value)
+                .OrderBy(value => value)
+                .ToArray());
+
         var tokens = await dbContext.RefreshTokens
             .OrderBy(token => token.CreatedAt)
             .ToListAsync();
@@ -55,6 +73,7 @@ public sealed class AuthServiceRefreshTests
 
         return new AuthService(
             dbContext,
+            new StubCloudinaryService(),
             new JwtTokenGenerator(jwtOptions),
             new PasswordHasher(),
             jwtOptions);
@@ -72,6 +91,8 @@ public sealed class AuthServiceRefreshTests
     private static string SeedUserWithRefreshToken(ApplicationDbContext dbContext)
     {
         var now = DateTime.UtcNow;
+        var importPermissionId = Guid.NewGuid();
+        var syncGenresPermissionId = Guid.NewGuid();
 
         var role = new Role
         {
@@ -97,16 +118,41 @@ public sealed class AuthServiceRefreshTests
             UpdatedAt = now
         };
 
-        var accessToken = new JwtTokenGenerator(
+        var tokenGenerator = new JwtTokenGenerator(
             Options.Create(new JwtOptions
             {
                 SecretKey = TestData.SecretKey,
                 Issuer = TestData.Issuer,
                 Audience = TestData.Audience
-            }))
-            .GenerateAccessToken(user, [role.Code], TestData.JwtId, now.AddMinutes(60));
+            }));
+        var generateAccessTokenMethod = typeof(JwtTokenGenerator).GetMethod("GenerateAccessToken");
+
+        Assert.NotNull(generateAccessTokenMethod);
+
+        var accessToken = Assert.IsType<string>(generateAccessTokenMethod!.Invoke(
+            tokenGenerator,
+            [user, new[] { role.Code }, new[] { "movies:import", "genres:sync" }, TestData.JwtId, now.AddMinutes(60)]));
 
         dbContext.Roles.Add(role);
+        dbContext.Permissions.AddRange(
+            new Permission
+            {
+                Id = importPermissionId,
+                Code = "movies:import",
+                Name = "Import movie",
+                Module = "movies",
+                CreatedAt = now,
+                UpdatedAt = now
+            },
+            new Permission
+            {
+                Id = syncGenresPermissionId,
+                Code = "genres:sync",
+                Name = "Sync genres",
+                Module = "genres",
+                CreatedAt = now,
+                UpdatedAt = now
+            });
         dbContext.Users.Add(user);
         dbContext.UserRoles.Add(new UserRole
         {
@@ -114,6 +160,19 @@ public sealed class AuthServiceRefreshTests
             RoleId = role.Id,
             AssignedAt = now
         });
+        dbContext.RolePermissions.AddRange(
+            new RolePermission
+            {
+                RoleId = role.Id,
+                PermissionId = importPermissionId,
+                CreatedAt = now
+            },
+            new RolePermission
+            {
+                RoleId = role.Id,
+                PermissionId = syncGenresPermissionId,
+                CreatedAt = now
+            });
 
         dbContext.RefreshTokens.Add(new RefreshToken
         {
@@ -137,5 +196,16 @@ public sealed class AuthServiceRefreshTests
         public const string Audience = "ReviewFilms.Frontend";
         public const string JwtId = "refresh-test-jti";
         public const string RawRefreshToken = "refresh-token-value";
+    }
+
+    private sealed class StubCloudinaryService : ReviewFilms.Api.Interfaces.ICloudinaryService
+    {
+        public Task<string?> UploadImageAsync(
+            Microsoft.AspNetCore.Http.IFormFile? file,
+            string? folder = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<string?>(null);
+        }
     }
 }

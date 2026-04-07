@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -17,17 +18,20 @@ public sealed class AuthService : IAuthService
     private const string DefaultRoleCode = "USER";
 
     private readonly ApplicationDbContext _dbContext;
+    private readonly ICloudinaryService _cloudinaryService;
     private readonly JwtTokenGenerator _jwtTokenGenerator;
     private readonly JwtOptions _jwtOptions;
     private readonly PasswordHasher _passwordHasher;
 
     public AuthService(
         ApplicationDbContext dbContext,
+        ICloudinaryService cloudinaryService,
         JwtTokenGenerator jwtTokenGenerator,
         PasswordHasher passwordHasher,
         IOptions<JwtOptions> jwtOptions)
     {
         _dbContext = dbContext;
+        _cloudinaryService = cloudinaryService;
         _jwtTokenGenerator = jwtTokenGenerator;
         _passwordHasher = passwordHasher;
         _jwtOptions = jwtOptions.Value;
@@ -56,6 +60,8 @@ public sealed class AuthService : IAuthService
         }
 
         var defaultRole = await _dbContext.Roles
+            .Include(role => role.RolePermissions)
+                .ThenInclude(rolePermission => rolePermission.Permission)
             .FirstOrDefaultAsync(role => role.Code == DefaultRoleCode, cancellationToken);
 
         if (defaultRole is null)
@@ -95,6 +101,7 @@ public sealed class AuthService : IAuthService
         var response = await IssueTokensAsync(
             user,
             [defaultRole.Code],
+            GetDistinctPermissions([defaultRole]),
             now,
             cancellationToken);
 
@@ -111,6 +118,8 @@ public sealed class AuthService : IAuthService
         var user = await _dbContext.Users
             .Include(user => user.UserRoles)
                 .ThenInclude(userRole => userRole.Role)
+                    .ThenInclude(role => role.RolePermissions)
+                        .ThenInclude(rolePermission => rolePermission.Permission)
             .FirstOrDefaultAsync(user =>
                 user.DeletedAt == null &&
                 (user.Username == identifier || user.Email == identifier),
@@ -129,13 +138,10 @@ public sealed class AuthService : IAuthService
         user.LastLoginAt = now;
         user.UpdatedAt = now;
 
-        var roles = user.UserRoles
-            .Select(userRole => userRole.Role.Code)
-            .Where(role => !string.IsNullOrWhiteSpace(role))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var roles = GetDistinctRoles(user);
+        var permissions = GetDistinctPermissions(user);
 
-        var response = await IssueTokensAsync(user, roles, now, cancellationToken);
+        var response = await IssueTokensAsync(user, roles, permissions, now, cancellationToken);
 
         return response;
     }
@@ -151,6 +157,8 @@ public sealed class AuthService : IAuthService
             .Include(token => token.User)
                 .ThenInclude(user => user.UserRoles)
                     .ThenInclude(userRole => userRole.Role)
+                        .ThenInclude(role => role.RolePermissions)
+                            .ThenInclude(rolePermission => rolePermission.Permission)
             .FirstOrDefaultAsync(token =>
                 token.JwtId == jwtId &&
                 token.RevokedAt == null &&
@@ -175,15 +183,13 @@ public sealed class AuthService : IAuthService
             throw new UnauthorizedAccessException("Account is not active.");
         }
 
-        var roles = user.UserRoles
-            .Select(userRole => userRole.Role.Code)
-            .Where(role => !string.IsNullOrWhiteSpace(role))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var roles = GetDistinctRoles(user);
+        var permissions = GetDistinctPermissions(user);
 
         var rotatedResponse = await IssueTokensAsync(
             user,
             roles,
+            permissions,
             now,
             cancellationToken,
             refreshToken);
@@ -191,9 +197,87 @@ public sealed class AuthService : IAuthService
         return rotatedResponse;
     }
 
+    public async Task LogoutAsync(
+        string? refreshToken,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            return;
+        }
+
+        var persistedRefreshTokens = await _dbContext.RefreshTokens
+            .Where(token => token.RevokedAt == null)
+            .OrderByDescending(token => token.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        var matchedRefreshToken = persistedRefreshTokens
+            .FirstOrDefault(token => _passwordHasher.Verify(refreshToken, token.TokenHash));
+
+        if (matchedRefreshToken is null)
+        {
+            return;
+        }
+
+        matchedRefreshToken.RevokedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<UserProfileDto> GetCurrentUserProfileAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await GetUserWithRolesAsync(userId, cancellationToken);
+        return MapToUserProfileDto(user);
+    }
+
+    public async Task<UserProfileDto> UpdateCurrentUserProfileAsync(
+        Guid userId,
+        UpdateUserProfileRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await GetUserWithRolesAsync(userId, cancellationToken);
+
+        if (request.DisplayName is not null)
+        {
+            if (string.IsNullOrWhiteSpace(request.DisplayName))
+            {
+                throw new ValidationException("DisplayName must not be empty.");
+            }
+
+            user.DisplayName = request.DisplayName.Trim();
+        }
+
+        if (request.Bio is not null)
+        {
+            user.Bio = string.IsNullOrWhiteSpace(request.Bio)
+                ? null
+                : request.Bio.Trim();
+        }
+
+        if (request.AvatarFile is { Length: > 0 })
+        {
+            var avatarUrl = await _cloudinaryService.UploadImageAsync(
+                request.AvatarFile,
+                "users/avatars",
+                cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(avatarUrl))
+            {
+                user.AvatarUrl = avatarUrl;
+            }
+        }
+
+        user.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return MapToUserProfileDto(user);
+    }
+
     private async Task<AuthResponse> IssueTokensAsync(
         User user,
         IReadOnlyCollection<string> roles,
+        IReadOnlyCollection<string> permissions,
         DateTime now,
         CancellationToken cancellationToken,
         RefreshToken? currentRefreshToken = null)
@@ -206,6 +290,7 @@ public sealed class AuthService : IAuthService
         var accessToken = _jwtTokenGenerator.GenerateAccessToken(
             user,
             roles,
+            permissions,
             jwtId,
             accessTokenExpiresAt);
 
@@ -244,7 +329,8 @@ public sealed class AuthService : IAuthService
             Email = user.Email,
             DisplayName = user.DisplayName,
             AvatarUrl = user.AvatarUrl,
-            Roles = roles.ToArray()
+            Roles = roles.ToArray(),
+            Permissions = permissions.ToArray()
         };
     }
 
@@ -267,6 +353,76 @@ public sealed class AuthService : IAuthService
         {
             throw new UnauthorizedAccessException("Invalid access token.", exception);
         }
+    }
+
+    private async Task<User> GetUserWithRolesAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await _dbContext.Users
+            .Include(currentUser => currentUser.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+                    .ThenInclude(role => role.RolePermissions)
+                        .ThenInclude(rolePermission => rolePermission.Permission)
+            .FirstOrDefaultAsync(
+                currentUser => currentUser.Id == userId && currentUser.DeletedAt == null,
+                cancellationToken);
+
+        if (user is null)
+        {
+            throw new KeyNotFoundException("User profile was not found.");
+        }
+
+        return user;
+    }
+
+    private static UserProfileDto MapToUserProfileDto(User user)
+    {
+        var roles = GetDistinctRoles(user);
+        var permissions = GetDistinctPermissions(user);
+
+        return new UserProfileDto
+        {
+            UserId = user.Id,
+            Username = user.Username,
+            Email = user.Email,
+            DisplayName = user.DisplayName,
+            AvatarUrl = user.AvatarUrl,
+            Bio = user.Bio,
+            Status = user.Status,
+            EmailConfirmed = user.EmailConfirmed,
+            LastLoginAt = user.LastLoginAt,
+            CreatedAt = user.CreatedAt,
+            Roles = roles,
+            Permissions = permissions
+        };
+    }
+
+    private static string[] GetDistinctRoles(User user)
+    {
+        return user.UserRoles
+            .Select(userRole => userRole.Role.Code)
+            .Where(role => !string.IsNullOrWhiteSpace(role))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(role => role, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static string[] GetDistinctPermissions(User user)
+    {
+        var roles = user.UserRoles
+            .Select(userRole => userRole.Role);
+
+        return GetDistinctPermissions(roles);
+    }
+
+    private static string[] GetDistinctPermissions(IEnumerable<Role> roles)
+    {
+        return roles
+            .SelectMany(role => role.RolePermissions)
+            .Select(rolePermission => rolePermission.Permission.Code)
+            .Where(permission => !string.IsNullOrWhiteSpace(permission))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(permission => permission, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static string NormalizeUsername(string username)

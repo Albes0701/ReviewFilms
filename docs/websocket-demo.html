@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReviewFilms - WebSocket SignalR Demo</title>
+    <script src="https://unpkg.com/@microsoft/signalr@latest/dist/browser/signalr.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .panel {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .panel-content {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            max-height: 600px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #10b981;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .notification-item {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 4px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification-item.unread {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+        }
+
+        .notification-item.read {
+            opacity: 0.7;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        .notification-message {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .notification-time {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .notification-actions button {
+            flex: 1;
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ff00;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .log-item {
+            margin-bottom: 4px;
+            word-wrap: break-word;
+        }
+
+        .log-item.info {
+            color: #00ff00;
+        }
+
+        .log-item.error {
+            color: #ff0000;
+        }
+
+        .log-item.warning {
+            color: #ffaa00;
+        }
+
+        .log-item.success {
+            color: #00ff99;
+        }
+
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 15px 0;
+        }
+
+        .info-box {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 13px;
+            color: #374151;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e5e7eb;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .panel {
+                min-width: 100%;
+            }
+        }
+
+        .comment-item {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .comment-content {
+            font-size: 13px;
+            color: #374151;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .comment-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #999;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .comment-actions button {
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            color: #374151;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .comment-actions button:hover {
+            background: #d1d5db;
+        }
+
+        .reply-section {
+            margin-left: 24px;
+            margin-top: 12px;
+            padding-left: 12px;
+            border-left: 3px solid #667eea;
+        }
+
+        .reply-form {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .reply-form input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .reply-form button {
+            padding: 6px 12px;
+            font-size: 11px;
+            border-radius: 4px;
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Left Panel: Authentication & Control -->
+        <div class="card panel">
+            <div class="panel-header">⚙️ Controls & Setup</div>
+            <div class="panel-content">
+                <div class="info-box">
+                    💡 <strong>Demo Instructions:</strong><br>
+                    1. Click "🧪 Test API" first<br>
+                    2. Enter valid credentials<br>
+                    3. Click "🔗 Connect" for WebSocket<br>
+                    4. Select a movie & add comments<br>
+                    5. See notifications in real-time!
+                </div>
+
+                <div class="form-group">
+                    <label>API Base URL</label>
+                    <input type="url" id="apiUrl" placeholder="http://localhost:5071" value="http://localhost:5071">
+                </div>
+
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" placeholder="e.g., john_doe" value="admin">
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Enter password" value="123456789">
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Disconnected</span>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-secondary" id="testBtn" onclick="testConnection()">🧪 Test API</button>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" id="connectBtn" onclick="connect()">🔗 Connect</button>
+                    <button class="btn-danger" id="disconnectBtn" onclick="disconnect()" disabled>🔌 Disconnect</button>
+                </div>
+
+                <div class="divider"></div>
+
+                <div>
+                    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #333;">📋 Connection Logs</label>
+                    <div class="log-container" id="logs"></div>
+                </div>
+
+                <button class="btn-secondary" style="margin-top: 10px; width: 100%;" onclick="clearLogs()">Clear Logs</button>
+            </div>
+        </div>
+
+        <!-- Middle Panel: Movie & Comments -->
+        <div class="card panel">
+            <div class="panel-header">🎬 Movies & Comments</div>
+            <div class="panel-content">
+                <div class="form-group">
+                    <label>Select Movie</label>
+                    <select id="movieSelect" onchange="loadComments()" disabled style="cursor: not-allowed;">
+                        <option value="">Loading movies...</option>
+                    </select>
+                </div>
+
+                <div id="movieDetails" style="display: none; margin-bottom: 15px; padding: 12px; background: #f3f4f6; border-radius: 6px;">
+                    <div id="movieTitle" style="font-weight: 600; margin-bottom: 5px;"></div>
+                    <div id="movieOverview" style="font-size: 12px; color: #666; line-height: 1.4;"></div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="form-group">
+                    <label>Add Comment</label>
+                    <textarea id="commentContent" placeholder="Write your comment..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: inherit; resize: vertical; min-height: 80px;" disabled></textarea>
+                </div>
+
+                <button class="btn-primary" style="width: 100%; margin-bottom: 15px;" onclick="submitComment()" id="commentBtn" disabled>📝 Post Comment</button>
+
+                <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #333;">💬 Comments</label>
+                <div id="commentsContainer" style="max-height: 350px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px;">
+                    <div style="text-align: center; color: #999; padding: 20px;">Select a movie to see comments</div>
+                </div>
+                <button class="btn-secondary" style="width: 100%; margin-top: 10px;" onclick="loadComments()">🔄 Refresh Comments</button>
+            </div>
+        </div>
+
+        <!-- Right Panel: Notifications Display -->
+        <div class="card panel">
+            <div class="panel-header">📬 Notifications</div>
+            <div class="panel-content" id="notificationsContainer" style="padding-bottom: 60px;">
+                <div class="info-box">
+                    ℹ️ <strong>Waiting for notifications...</strong><br>
+                    Connect first to receive real-time updates
+                </div>
+            </div>
+
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; padding: 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.05);">
+                <button class="btn-secondary" style="width: 100%; margin-bottom: 10px;" onclick="markAllAsRead()">✓ Mark All as Read</button>
+                <button class="btn-secondary" style="width: 100%;" onclick="clearNotifications()">🗑️ Clear All</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let connection;
+        let currentUserId;
+        let authToken;
+        let selectedMovieId;
+        let currentUserDisplayName;
+        let autoRefreshInterval; // Auto-refresh timer
+
+        // Logging utility
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const logItem = document.createElement('div');
+            logItem.className = `log-item ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            logItem.textContent = `[${timestamp}] ${message}`;
+            logs.appendChild(logItem);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        // Update connection status
+        function updateStatus(connected) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const movieSelect = document.getElementById('movieSelect');
+            const commentContent = document.getElementById('commentContent');
+            const commentBtn = document.getElementById('commentBtn');
+
+            if (connected) {
+                statusDot.classList.add('connected');
+                statusText.textContent = '🟢 Connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                movieSelect.disabled = false;
+                movieSelect.style.cursor = 'pointer';
+                commentContent.disabled = false;
+                commentBtn.disabled = false;
+                loadMovies();
+            } else {
+                statusDot.classList.remove('connected');
+                statusText.textContent = '🔴 Disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                movieSelect.disabled = true;
+                movieSelect.style.cursor = 'not-allowed';
+                commentContent.disabled = true;
+                commentBtn.disabled = true;
+            }
+        }
+
+        // Load movies from API
+        async function loadMovies() {
+            try {
+                const response = await fetch(`${document.getElementById('apiUrl').value}/api/movies`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error(`Failed to load movies: ${response.status}`);
+
+                const data = await response.json();
+                const movies = data.data?.items || data.items || data;
+                const movieSelect = document.getElementById('movieSelect');
+                movieSelect.innerHTML = '<option value="">Select a movie...</option>';
+
+                movies.forEach(movie => {
+                    const option = document.createElement('option');
+                    option.value = movie.id;
+                    option.textContent = movie.title;
+                    movieSelect.appendChild(option);
+                });
+
+                log(`✓ Loaded ${movies.length} movies`, 'success');
+            } catch (error) {
+                log(`✗ Error loading movies: ${error.message}`, 'error');
+            }
+        }
+
+        // Load comments for selected movie
+        async function loadComments() {
+            const movieSelect = document.getElementById('movieSelect');
+            selectedMovieId = movieSelect.value;
+
+            if (!selectedMovieId) {
+                document.getElementById('movieDetails').style.display = 'none';
+                document.getElementById('commentsContainer').innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">Select a movie to see comments</div>';
+                return;
+            }
+
+            try {
+                // Load movie details
+                const movieResponse = await fetch(`${document.getElementById('apiUrl').value}/api/movies/${selectedMovieId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (movieResponse.ok) {
+                    const movieData = await movieResponse.json();
+                    const movie = movieData.data || movieData;
+                    document.getElementById('movieTitle').textContent = movie.title;
+                    document.getElementById('movieOverview').textContent = movie.overview || 'No overview available';
+                    document.getElementById('movieDetails').style.display = 'block';
+                }
+
+                // Load comments
+                const commentsResponse = await fetch(`${document.getElementById('apiUrl').value}/api/reviews/movies/${selectedMovieId}/comments`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!commentsResponse.ok) throw new Error('Failed to load comments');
+
+                const commentsData = await commentsResponse.json();
+                const comments = commentsData.data?.items || commentsData.data || commentsData.items || commentsData || [];
+                
+                const container = document.getElementById('commentsContainer');
+                if (!Array.isArray(comments) || comments.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">No comments yet. Be the first to comment!</div>';
+                } else {
+                    container.innerHTML = '';
+                    comments.forEach(comment => {
+                        addCommentElement(comment);
+                    });
+                }
+
+                log(`✓ Loaded ${Array.isArray(comments) ? comments.length : 0} comments`, 'success');
+            } catch (error) {
+                log(`✗ Error loading comments: ${error.message}`, 'error');
+            }
+        }
+
+        // Add comment element to UI
+        function addCommentElement(comment) {
+            const container = document.getElementById('commentsContainer');
+            const commentEl = document.createElement('div');
+            commentEl.className = 'comment-item';
+            commentEl.id = `comment-${comment.id}`;
+            
+            // Add margin-left for nested replies
+            if (comment.depth > 0) {
+                commentEl.style.marginLeft = `${comment.depth * 24}px`;
+                commentEl.style.borderLeft = '3px solid #667eea';
+            }
+
+            const time = new Date(comment.createdAt).toLocaleString();
+
+            commentEl.innerHTML = `
+                <div class="comment-author">User ${comment.userId.substring(0, 8)}</div>
+                <div class="comment-content">${comment.content}</div>
+                <div class="comment-meta">
+                    <span>${time}</span>
+                    <span>👍 ${comment.upvoteCount || 0} | 👎 ${comment.downvoteCount || 0} | 💬 ${comment.replyCount || 0}</span>
+                </div>
+                <div class="comment-actions">
+                    <button onclick="showReplyForm('${comment.id}')">💬 Reply</button>
+                </div>
+                <div id="reply-form-${comment.id}" style="display: none; margin-top: 12px;">
+                    <div class="reply-form">
+                        <input type="text" id="reply-input-${comment.id}" placeholder="Write a reply..." />
+                        <button onclick="submitReply('${comment.id}')">Send</button>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(commentEl);
+            
+            // Add child comments recursively
+            if (comment.childComments && comment.childComments.length > 0) {
+                comment.childComments.forEach(childComment => {
+                    addCommentElement(childComment);
+                });
+            }
+        }
+
+        // Show reply form
+        function showReplyForm(commentId) {
+            const form = document.getElementById(`reply-form-${commentId}`);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            if (form.style.display === 'block') {
+                document.getElementById(`reply-input-${commentId}`).focus();
+            }
+        }
+
+        // Submit a new comment
+        async function submitComment() {
+            const content = document.getElementById('commentContent').value.trim();
+
+            if (!content) {
+                alert('Please write a comment');
+                return;
+            }
+
+            if (!selectedMovieId) {
+                alert('Please select a movie');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${document.getElementById('apiUrl').value}/api/reviews/comments`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        movieId: selectedMovieId,
+                        content: content
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.text();
+                    throw new Error(`Failed to post comment (${response.status}): ${errorData}`);
+                }
+
+                const data = await response.json();
+
+                log(`✓ Comment posted successfully!`, 'success');
+                document.getElementById('commentContent').value = '';
+                
+                // Reload comments
+                loadComments();
+            } catch (error) {
+                log(`✗ Error posting comment: ${error.message}`, 'error');
+            }
+        }
+
+        // Submit a reply to a comment
+        async function submitReply(parentCommentId) {
+            const input = document.getElementById(`reply-input-${parentCommentId}`);
+            const content = input.value.trim();
+
+            if (!content) {
+                alert('Please write a reply');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${document.getElementById('apiUrl').value}/api/reviews/comments`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        movieId: selectedMovieId,
+                        content: content,
+                        parentId: parentCommentId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.text();
+                    throw new Error(`Failed to post reply (${response.status}): ${errorData}`);
+                }
+
+                const data = await response.json();
+                
+                log(`✓ Reply posted successfully!`, 'success');
+                input.value = '';
+                document.getElementById(`reply-form-${parentCommentId}`).style.display = 'none';
+                
+                // Reload comments
+                loadComments();
+            } catch (error) {
+                log(`✗ Error posting reply: ${error.message}`, 'error');
+            }
+        }
+
+        // Add notification to UI
+        function addNotification(notification) {
+            const container = document.getElementById('notificationsContainer');
+            
+            // Remove placeholder if exists
+            const placeholder = container.querySelector('.info-box');
+            if (placeholder && placeholder.textContent.includes('Waiting for notifications')) {
+                placeholder.remove();
+            }
+
+            const notifEl = document.createElement('div');
+            notifEl.className = `notification-item ${notification.isRead ? 'read' : 'unread'}`;
+            notifEl.id = `notif-${notification.id}`;
+
+            const time = new Date(notification.createdAt).toLocaleTimeString();
+            
+            notifEl.innerHTML = `
+                <div class="notification-title">${notification.type}</div>
+                <div class="notification-message">${notification.title}</div>
+                <div class="notification-message">${notification.message}</div>
+                <div class="notification-time">⏰ ${time}</div>
+                <div class="notification-actions">
+                    <button class="btn-secondary" style="flex: 1; padding: 6px;" onclick="markAsRead('${notification.id}')">
+                        ${notification.isRead ? '✓ Read' : 'Mark Read'}
+                    </button>
+                </div>
+            `;
+
+            container.insertBefore(notifEl, container.firstChild);
+        }
+
+        // Mark notification as read
+        async function markAsRead(notificationId) {
+            try {
+                const response = await fetch(`${document.getElementById('apiUrl').value}/api/notifications/${notificationId}/mark-read`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const notifEl = document.getElementById(`notif-${notificationId}`);
+                    if (notifEl) {
+                        notifEl.classList.add('read');
+                    }
+                    log(`✓ Notification marked as read`, 'success');
+                }
+            } catch (error) {
+                log(`✗ Error marking notification as read: ${error.message}`, 'error');
+            }
+        }
+
+        // Mark all as read
+        async function markAllAsRead() {
+            const container = document.getElementById('notificationsContainer');
+            const unreadNotifs = container.querySelectorAll('.notification-item.unread');
+            
+            for (const notif of unreadNotifs) {
+                const notifId = notif.id.replace('notif-', '');
+                await markAsRead(notifId);
+            }
+        }
+
+        // Clear all notifications
+        function clearNotifications() {
+            const container = document.getElementById('notificationsContainer');
+            container.innerHTML = `
+                <div class="info-box">
+                    ✨ <strong>All notifications cleared</strong>
+                </div>
+            `;
+        }
+
+        // Test API connection
+        async function testConnection() {
+            const apiUrl = document.getElementById('apiUrl').value;
+
+            if (!apiUrl) {
+                alert('Please enter API URL');
+                return;
+            }
+
+            log('🧪 Testing API connection...', 'info');
+
+            try {
+                const response = await fetch(`${apiUrl}/api/auth/login`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).catch(e => {
+                    log(`Network error: ${e.message}`, 'error');
+                    return null;
+                });
+
+                if (!response) {
+                    log('✗ Cannot reach API. Check URL and ensure API is running', 'error');
+                    log('Hints: Is API running? Check firewall? Try http://localhost:5000', 'warning');
+                    return;
+                }
+
+                log(`✓ API is reachable (Status: ${response.status})`, 'success');
+                log(`Try connecting with valid credentials`, 'info');
+
+            } catch (error) {
+                log(`✗ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Connect to SignalR hub
+        async function connect() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const usernameOrEmail = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!apiUrl || !usernameOrEmail || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            log('🔄 Authenticating...', 'info');
+
+            try {
+                // Authenticate and get token
+                const authResponse = await fetch(`${apiUrl}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ usernameOrEmail, password })
+                });
+
+                if (authResponse.status === 405) {
+                    throw new Error('405 Method Not Allowed - Check API endpoint or CORS configuration');
+                }
+
+                if (authResponse.status === 0 || !authResponse.ok) {
+                    const message = authResponse.status === 0 
+                        ? 'Cannot connect to API server. Is it running? Check URL.' 
+                        : `Authentication failed (${authResponse.status}): ${authResponse.statusText}`;
+                    throw new Error(message);
+                }
+
+                const authData = await authResponse.json();
+                
+                // Handle the response structure
+                if (!authData.success || !authData.data) {
+                    throw new Error('Invalid authentication response');
+                }
+
+                authToken = authData.data.token;
+                currentUserId = authData.data.userId;
+                currentUserDisplayName = authData.data.displayName;
+
+                log(`✓ Authenticated as ${authData.data.displayName}`, 'success');
+                log('🔗 Connecting to WebSocket...', 'info');
+
+                // Create SignalR connection
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl(`${apiUrl}/hubs/notifications`, {
+                        accessTokenFactory: () => authToken
+                    })
+                    .withAutomaticReconnect([0, 1000, 3000, 5000])
+                    .build();
+
+                // Connection event handlers
+                connection.on('ReceiveNotification', (notification) => {
+                    log(`📨 Received notification: ${notification.title}`, 'success');
+                    addNotification(notification);
+                });
+
+                connection.on('NotificationMarkedAsRead', (data) => {
+                    log(`📖 Notification marked as read: ${data.notificationId}`, 'info');
+                });
+
+                connection.on('CommentCreated', (comment) => {
+                    log(`💬 New comment received on movie!`, 'success');
+                    if (selectedMovieId) {
+                        loadComments();
+                    }
+                });
+
+                connection.onreconnecting((error) => {
+                    log(`⚠️ Reconnecting... (${error})`, 'warning');
+                    updateStatus(false);
+                });
+
+                connection.onreconnected((connectionId) => {
+                    log(`✓ Reconnected (ID: ${connectionId})`, 'success');
+                    updateStatus(true);
+                });
+
+                connection.onclose((error) => {
+                    if (autoRefreshInterval) {
+                        clearInterval(autoRefreshInterval);
+                        autoRefreshInterval = null;
+                    }
+                    
+                    if (error) {
+                        log(`✗ Connection closed: ${error}`, 'error');
+                    } else {
+                        log('Connection closed', 'info');
+                    }
+                    updateStatus(false);
+                });
+
+                // Start connection
+                await connection.start();
+                log('✓ WebSocket connected successfully!', 'success');
+                updateStatus(true);
+
+                // Auto-refresh comments every 5 seconds when a movie is selected
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                }
+                autoRefreshInterval = setInterval(() => {
+                    if (selectedMovieId) {
+                        loadComments();
+                    }
+                }, 5000);
+
+            } catch (error) {
+                log(`✗ Connection error: ${error.message}`, 'error');
+                updateStatus(false);
+            }
+        }
+
+        // Disconnect
+        async function disconnect() {
+            try {
+                // Clear auto-refresh
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+
+                if (connection) {
+                    await connection.stop();
+                    log('✓ Disconnected', 'info');
+                    updateStatus(false);
+                }
+            } catch (error) {
+                log(`✗ Disconnect error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            // Check if SignalR loaded
+            if (typeof signalR === 'undefined') {
+                const msg = '⚠️ SignalR library failed to load. Open this file through a local server instead:\n\n1. Use VS Code Live Server extension (right-click file → Open with Live Server)\n2. Or: python -m http.server 8000 --directory docs/\n3. Then open: http://localhost:8000/websocket-demo.html';
+                alert(msg);
+                log('✗ SignalR library not found. Run this file through a local server!', 'error');
+                return;
+            }
+            log('Demo initialized. Configure settings and click Test API.', 'info');
+            updateStatus(false);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            if (connection) {
+                connection.stop();
+            }
+        });
+    </script>
+</body>
+</html>

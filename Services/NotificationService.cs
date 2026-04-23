@@ -1,10 +1,12 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using ReviewFilms.Api.Data;
 using ReviewFilms.Api.DTOs.Common;
 using ReviewFilms.Api.DTOs.Notifications;
 using ReviewFilms.Api.Entities;
 using ReviewFilms.Api.Enums;
+using ReviewFilms.Api.Hubs;
 using ReviewFilms.Api.Interfaces;
 
 namespace ReviewFilms.Api.Services;
@@ -14,10 +16,12 @@ public sealed class NotificationService : INotificationService
     private const int MaxPageSize = 100;
 
     private readonly ApplicationDbContext _dbContext;
+    private readonly IHubContext<NotificationHub> _hubContext;
 
-    public NotificationService(ApplicationDbContext dbContext)
+    public NotificationService(ApplicationDbContext dbContext, IHubContext<NotificationHub> hubContext)
     {
         _dbContext = dbContext;
+        _hubContext = hubContext;
     }
 
     public async Task<NotificationResponse> CreateNotificationAsync(
@@ -51,7 +55,14 @@ public sealed class NotificationService : INotificationService
         _dbContext.Notifications.Add(notification);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return NotificationResponse.FromEntity(notification);
+        var response = NotificationResponse.FromEntity(notification);
+
+        // Emit notification via SignalR to the user's group
+        await _hubContext.Clients
+            .Group($"user_{userId}")
+            .SendAsync("ReceiveNotification", response, cancellationToken);
+
+        return response;
     }
 
     public async Task<PagedResponse<NotificationResponse>> GetUserNotificationsAsync(
@@ -111,7 +122,14 @@ public sealed class NotificationService : INotificationService
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        return NotificationResponse.FromEntity(notification);
+        var response = NotificationResponse.FromEntity(notification);
+
+        // Emit notification read event via SignalR to the user's group
+        await _hubContext.Clients
+            .Group($"user_{userId}")
+            .SendAsync("NotificationMarkedAsRead", new { notificationId, userId }, cancellationToken);
+
+        return response;
     }
 
     private static void ValidateUserId(Guid userId)

@@ -22,6 +22,8 @@ public static class ServiceCollectionExtensions
             options
             .UseMySQL(connectionString)
             .UseSnakeCaseNamingConvention();
+            options.EnableDetailedErrors();
+            options.EnableSensitiveDataLogging();
         });
 
         services.AddHttpContextAccessor();

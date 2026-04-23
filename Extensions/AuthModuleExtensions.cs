@@ -65,6 +65,28 @@ public static class AuthModuleExtensions
                     RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                     ClockSkew = TimeSpan.FromMinutes(1)
                 };
+
+                // Handle JWT from query string (required for SignalR WebSocket connections)
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        // Check for token in Authorization header first
+                        if (context.Request.Headers.ContainsKey("Authorization"))
+                        {
+                            return Task.CompletedTask;
+                        }
+
+                        // Extract token from query string for WebSocket connections
+                        var accessToken = context.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(accessToken))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         services.AddSingleton<IStartupFilter, JwtAuthenticationStartupFilter>();

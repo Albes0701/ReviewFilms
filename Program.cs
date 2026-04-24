@@ -13,13 +13,20 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:5500",
-                "http://127.0.0.1:5500",
-                "http://localhost:5173",
-                "http://127.0.0.1:5173"
-            )
+        policy.SetIsOriginAllowed(origin =>
+            {
+                if (string.Equals(origin, "null", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return false;
+                }
+
+                return uri.IsLoopback;
+            })
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();

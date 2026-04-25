@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ReviewFilms.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate_MySql : Migration
+    public partial class Initial_Create_Pomelo : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -58,8 +58,8 @@ namespace ReviewFilms.Migrations
                     original_name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true),
                     known_for_department = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true),
                     gender = table.Column<string>(type: "varchar(20)", maxLength: 20, nullable: true),
-                    birthday = table.Column<DateOnly>(type: "date", nullable: true),
-                    deathday = table.Column<DateOnly>(type: "date", nullable: true),
+                    birthday = table.Column<DateTime>(type: "date", nullable: true),
+                    deathday = table.Column<DateTime>(type: "date", nullable: true),
                     place_of_birth = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true),
                     biography = table.Column<string>(type: "longtext", nullable: true),
                     profile_url = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true),
@@ -123,7 +123,7 @@ namespace ReviewFilms.Migrations
                     original_title = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true),
                     slug = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false),
                     overview = table.Column<string>(type: "longtext", nullable: true),
-                    release_date = table.Column<DateOnly>(type: "date", nullable: true),
+                    release_date = table.Column<DateTime>(type: "date", nullable: true),
                     runtime_minutes = table.Column<int>(type: "int", nullable: true),
                     age_rating = table.Column<string>(type: "varchar(20)", maxLength: 20, nullable: true),
                     original_language = table.Column<string>(type: "varchar(10)", maxLength: 10, nullable: true),

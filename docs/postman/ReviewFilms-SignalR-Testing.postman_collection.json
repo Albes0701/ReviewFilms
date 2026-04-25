@@ -1,0 +1,403 @@
+{
+  "info": {
+    "name": "ReviewFilms - SignalR Testing",
+    "description": "Complete test suite for SignalR Notifications with realtime demo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Login - User A",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user.a@example.com\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login - User B",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user.b@example.com\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎬 Movies & Setup",
+      "item": [
+        {
+          "name": "Get Movies",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_a}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/movies?pageSize=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "movies"],
+              "query": [
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 Comments - Test Scenario",
+      "item": [
+        {
+          "name": "[Step 1] User A - Create Root Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const response = pm.response.json();",
+                  "  pm.environment.set('comment_id', response.data.id);",
+                  "  pm.environment.set('root_comment_id', response.data.id);",
+                  "  console.log('Root comment ID saved:', response.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_a}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"movieId\": \"{{movie_id}}\",\n  \"content\": \"This is one of the best movies I've ever watched! The plot was incredible and the acting was superb. Highly recommend!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reviews/comments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reviews", "comments"]
+            }
+          }
+        },
+        {
+          "name": "[Step 2] User B - Reply to Comment (TRIGGER NOTIFICATION)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "console.log('⚠️ IMPORTANT: Make sure User A is connected to WebSocket first!');",
+                  "console.log('Parent Comment ID: ' + pm.environment.get('root_comment_id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_b}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"movieId\": \"{{movie_id}}\",\n  \"parentId\": \"{{root_comment_id}}\",\n  \"content\": \"Absolutely agreed! I loved that part. The cinematography was also stunning.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reviews/comments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reviews", "comments"]
+            }
+          }
+        },
+        {
+          "name": "[Step 3] User A - Add Another Reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_a}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"movieId\": \"{{movie_id}}\",\n  \"parentId\": \"{{root_comment_id}}\",\n  \"content\": \"Great! Let's watch it together next time!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reviews/comments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reviews", "comments"]
+            }
+          }
+        },
+        {
+          "name": "Get All Comments for Movie",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_a}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reviews/movies/{{movie_id}}/comments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reviews", "movies", "{{movie_id}}", "comments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Notifications - REST API",
+      "item": [
+        {
+          "name": "Get My Notifications (User A)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_a}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications?page=1&pageSize=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (!pm.environment.get('notification_id')) {",
+                  "  pm.environment.set('notification_id', 'paste-notification-uuid-here');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_a}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/{{notification_id}}/read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "{{notification_id}}", "read"]
+            }
+          }
+        },
+        {
+          "name": "Create Manual Notification (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"CommentReply\",\n  \"title\": \"🔔 System Maintenance Alert\",\n  \"message\": \"The system will undergo maintenance tonight from 10 PM to 11 PM UTC. Please save your work.\",\n  \"data\": {\n    \"maintenanceWindow\": \"22:00 - 23:00 UTC\",\n    \"estimatedDowntime\": \"1 hour\",\n    \"reason\": \"Database optimization\"\n  },\n  \"expiresAt\": \"2026-04-11T23:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/notifications",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🌐 WebSocket - Notifications Hub",
+      "item": [
+        {
+          "name": "[WebSocket] User A - Notification Listener",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_a}}"
+              }
+            ],
+            "url": {
+              "raw": "ws://localhost:5000/hubs/notifications",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["hubs", "notifications"]
+            }
+          }
+        },
+        {
+          "name": "[WebSocket] User B - Notification Listener",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_b}}"
+              }
+            ],
+            "url": {
+              "raw": "ws://localhost:5000/hubs/notifications",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["hubs", "notifications"]
+            }
+          }
+        },
+        {
+          "name": "[Manual Test] Subscribe Method",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_a}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": 1,\n  \"target\": \"SubscribeToNotifications\",\n  \"arguments\": [\"{{user_id_a}}\"]\n}"
+            },
+            "url": {
+              "raw": "ws://localhost:5000/hubs/notifications",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["hubs", "notifications"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token_a",
+      "value": "paste-user-a-token-here",
+      "type": "string"
+    },
+    {
+      "key": "token_b",
+      "value": "paste-user-b-token-here",
+      "type": "string"
+    },
+    {
+      "key": "token_admin",
+      "value": "paste-admin-token-here",
+      "type": "string"
+    },
+    {
+      "key": "user_id_a",
+      "value": "paste-user-a-id-here",
+      "type": "string"
+    },
+    {
+      "key": "user_id_b",
+      "value": "paste-user-b-id-here",
+      "type": "string"
+    },
+    {
+      "key": "movie_id",
+      "value": "paste-movie-id-here",
+      "type": "string"
+    },
+    {
+      "key": "root_comment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "notification_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

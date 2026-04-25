@@ -257,7 +257,7 @@ namespace ReviewFilms.Migrations
                         .HasColumnType("int")
                         .HasColumnName("rating_count");
 
-                    b.Property<DateOnly?>("ReleaseDate")
+                    b.Property<DateTime?>("ReleaseDate")
                         .HasColumnType("date")
                         .HasColumnName("release_date");
 
@@ -552,7 +552,7 @@ namespace ReviewFilms.Migrations
                         .HasColumnType("longtext")
                         .HasColumnName("biography");
 
-                    b.Property<DateOnly?>("Birthday")
+                    b.Property<DateTime?>("Birthday")
                         .HasColumnType("date")
                         .HasColumnName("birthday");
 
@@ -560,7 +560,7 @@ namespace ReviewFilms.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("created_at");
 
-                    b.Property<DateOnly?>("Deathday")
+                    b.Property<DateTime?>("Deathday")
                         .HasColumnType("date")
                         .HasColumnName("deathday");
 

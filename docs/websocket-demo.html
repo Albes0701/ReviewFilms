@@ -411,7 +411,7 @@
 
                 <div class="form-group">
                     <label>API Base URL</label>
-                    <input type="url" id="apiUrl" placeholder="http://localhost:5071" value="http://localhost:5071">
+                    <input type="url" id="apiUrl" placeholder="http://localhost:5000" value="http://localhost:5000">
                 </div>
 
                 <div class="form-group">
@@ -508,6 +508,7 @@
         let selectedMovieId;
         let currentUserDisplayName;
         let autoRefreshInterval; // Auto-refresh timer
+        const commentsRefreshMs = 10000;
 
         // Logging utility
         function log(message, type = 'info') {
@@ -522,6 +523,16 @@
 
         function clearLogs() {
             document.getElementById('logs').innerHTML = '';
+        }
+
+        function isTypingComment() {
+            const activeElement = document.activeElement;
+            if (!activeElement) {
+                return false;
+            }
+
+            return activeElement.id === 'commentContent'
+                || activeElement.id.startsWith('reply-input-');
         }
 
         // Update connection status
@@ -859,6 +870,7 @@
         // Test API connection
         async function testConnection() {
             const apiUrl = document.getElementById('apiUrl').value;
+            const pageOrigin = window.location.origin || 'null';
 
             if (!apiUrl) {
                 alert('Please enter API URL');
@@ -866,29 +878,27 @@
             }
 
             log('🧪 Testing API connection...', 'info');
+            log(`Client origin: ${pageOrigin}`, 'info');
 
             try {
-                const response = await fetch(`${apiUrl}/api/auth/login`, {
-                    method: 'OPTIONS',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                }).catch(e => {
-                    log(`Network error: ${e.message}`, 'error');
-                    return null;
+                // Use a simple GET request so the connectivity check is not affected by manual OPTIONS behavior.
+                const response = await fetch(`${apiUrl}/api/auth/me`, {
+                    method: 'GET'
                 });
 
-                if (!response) {
-                    log('✗ Cannot reach API. Check URL and ensure API is running', 'error');
-                    log('Hints: Is API running? Check firewall? Try http://localhost:5000', 'warning');
-                    return;
+                log(`✓ API is reachable (Status: ${response.status})`, 'success');
+
+                if (response.status === 401) {
+                    log('Auth endpoint reachable. Continue with valid credentials.', 'info');
+                } else {
+                    log('Try connecting with valid credentials', 'info');
                 }
 
-                log(`✓ API is reachable (Status: ${response.status})`, 'success');
-                log(`Try connecting with valid credentials`, 'info');
-
             } catch (error) {
-                log(`✗ Error: ${error.message}`, 'error');
+                log(`Network error: ${error.message}`, 'error');
+                log('✗ Cannot reach API from browser (possible CORS/origin/HTTPS certificate issue)', 'error');
+                log(`Current page origin: ${pageOrigin}`, 'warning');
+                log('Hints: Ensure API is running and CORS allows this exact origin.', 'warning');
             }
         }
 
@@ -960,7 +970,7 @@
 
                 connection.on('CommentCreated', (comment) => {
                     log(`💬 New comment received on movie!`, 'success');
-                    if (selectedMovieId) {
+                    if (selectedMovieId && !isTypingComment()) {
                         loadComments();
                     }
                 });
@@ -994,18 +1004,25 @@
                 log('✓ WebSocket connected successfully!', 'success');
                 updateStatus(true);
 
-                // Auto-refresh comments every 5 seconds when a movie is selected
+                // Auto-refresh comments every 10 seconds when a movie is selected
                 if (autoRefreshInterval) {
                     clearInterval(autoRefreshInterval);
                 }
                 autoRefreshInterval = setInterval(() => {
-                    if (selectedMovieId) {
+                    if (selectedMovieId && !isTypingComment()) {
                         loadComments();
                     }
-                }, 5000);
+                }, commentsRefreshMs);
 
             } catch (error) {
                 log(`✗ Connection error: ${error.message}`, 'error');
+
+                if (error.message && error.message.includes('Failed to fetch')) {
+                    const pageOrigin = window.location.origin || 'null';
+                    log(`Possible browser block. Current page origin: ${pageOrigin}`, 'warning');
+                    log('Check CORS allowlist and HTTPS certificate trust in browser.', 'warning');
+                }
+
                 updateStatus(false);
             }
         }
@@ -1038,6 +1055,7 @@
                 log('✗ SignalR library not found. Run this file through a local server!', 'error');
                 return;
             }
+            log(`Page origin: ${window.location.origin || 'null'}`, 'info');
             log('Demo initialized. Configure settings and click Test API.', 'info');
             updateStatus(false);
         });
